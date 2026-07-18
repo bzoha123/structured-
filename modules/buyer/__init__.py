@@ -1,0 +1,1 @@
+"""buyer module package."""

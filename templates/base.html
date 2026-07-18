@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="{{ current_locale }}" {% if current_locale == 'ar' %}dir="rtl"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% if current_locale=='ar' %}نظام إدارة البائعين{% else %}Seller Master System{% endif %}{% endblock %}</title>
+
+    {% if current_locale == 'ar' %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+    {% else %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    {% endif %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+      /* ── Collapsible sidebar submenus ── */
+      .nav-parent {
+        display:flex; align-items:center; width:100%; cursor:pointer;
+        border:none; background:transparent; text-align:inherit;
+      }
+      .nav-parent .nav-caret {
+        margin-inline-start:auto; font-size:11px; transition:transform .22s ease;
+      }
+      .nav-parent[aria-expanded="true"] .nav-caret { transform:rotate(90deg); }
+      .nav-parent.has-active { color:#fff; font-weight:600; }
+      .nav-sub { list-style:none; padding:0; margin:0; }
+      .nav-sub .nav-link {
+        padding-inline-start:42px; font-size:.92em;
+      }
+      html[dir="rtl"] .nav-sub .nav-link { padding-inline-start:0; padding-inline-end:42px; }
+      html[dir="rtl"] .nav-parent .nav-caret { transform:scaleX(-1); }
+      html[dir="rtl"] .nav-parent[aria-expanded="true"] .nav-caret { transform:rotate(90deg); }
+
+      /* ── Coming Soon Badge ── */
+      .nav-soon {
+        font-size: 0.6rem;
+        padding: 2px 8px;
+        margin-inline-start: auto;
+        background: #ffc107;
+        color: #000;
+        border-radius: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .nav-item-coming .nav-link-disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .nav-item-coming .nav-link-disabled:hover {
+        background: transparent;
+      }
+
+      /* ── Payroll Status Badges ── */
+      .status-draft { background: #e9ecef; color: #495057; }
+      .status-processing { background: #fff3cd; color: #856404; }
+      .status-approved { background: #d4edda; color: #155724; }
+      .status-paid { background: #cce5ff; color: #004085; }
+      .status-posted { background: #cce5ff; color: #004085; }
+      .status-cancelled { background: #f8d7da; color: #721c24; }
+    </style>
+    <!-- Desktop-style modal windows (drag / minimize / maximize / resize) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/window-modal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/grid-kit.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% block body %}
+<div class="wrapper d-flex">
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="brand-logo">
+                <i class="fas fa-store-alt"></i>
+                <span class="brand-name">{% if current_locale=='ar' %}نظام البائعين{% else %}SellerMS{% endif %}</span>
+            </div>
+            <button class="btn btn-sm sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <div class="sidebar-user">
+            <div class="user-avatar"><i class="fas fa-user-circle fa-2x"></i></div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.username }}</div>
+                <div class="user-role badge bg-primary">{% if current_locale=='ar' %}{% if current_user.role=='admin' %}مدير{% else %}موظف{% endif %}{% else %}{{ current_user.role|title }}{% endif %}</div>
+            </div>
+        </div>
+
+        <ul class="sidebar-nav">
+
+            {# ── Dashboard ─────────────────────────────────── #}
+            <li class="nav-item">
+                <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint=='dashboard.index' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>{% if current_locale=='ar' %}لوحة التحكم{% else %}Dashboard{% endif %}</span>
+                </a>
+            </li>
+
+            {# ══ SELLER ══════════════════════════════════════ #}
+            {% set seller_active = request.endpoint in ['sellers.list_sellers','sellers.view_seller','sellers.list_seller_documents_page'] or (request.endpoint == 'lookups.items_list') %}
+            <li class="nav-item">
+                <a class="nav-link nav-parent {% if seller_active %}has-active{% endif %}" data-bs-toggle="collapse" href="#menuSeller" role="button" aria-expanded="{{ 'true' if seller_active else 'false' }}" aria-controls="menuSeller">
+                    <i class="fas fa-users"></i>
+                    <span>{% if current_locale=='ar' %}البائعون{% else %}Seller{% endif %}</span>
+                    <i class="fas fa-chevron-right nav-caret"></i>
+                </a>
+                <div class="collapse {% if seller_active %}show{% endif %}" id="menuSeller">
+                    <ul class="nav-sub">
+                        <li class="nav-item">
+                            <a href="{{ url_for('sellers.list_sellers') }}" class="nav-link {% if request.endpoint in ['sellers.list_sellers','sellers.view_seller'] %}active{% endif %}">
+                                <i class="fas fa-users"></i>
+                                <span>{% if current_locale=='ar' %}البائعون{% else %}Seller{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('sellers.list_seller_documents_page') }}"
+                               class="nav-link {% if request.endpoint == 'sellers.list_seller_documents_page' %}active{% endif %}">
+                                <i class="fas fa-paperclip"></i>
+                                <span>{% if current_locale=='ar' %}وثائق البائع{% else %}Seller Documents{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('lookups.items_list') }}" class="nav-link {% if request.endpoint == 'lookups.items_list' %}active{% endif %}">
+                                <i class="fas fa-boxes"></i>
+                                <span>{% if current_locale=='ar' %}بنود البضاعة{% else %}Item Master{% endif %}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            {# ══ PURCHASE ════════════════════════════════════ #}
+            {% set purchase_active = request.endpoint and (('vendor' in request.endpoint) or ('pr_list' in request.endpoint) or ('pq_list' in request.endpoint) or ('po_list' in request.endpoint) or ('grn' in request.endpoint) or ('pinv' in request.endpoint) or ('grr' in request.endpoint) or ('pdm' in request.endpoint) or (request.endpoint == 'tax_codes.purchase_tax_page')) %}
+            <li class="nav-item">
+                <a class="nav-link nav-parent {% if purchase_active %}has-active{% endif %}" data-bs-toggle="collapse" href="#menuPurchase" role="button" aria-expanded="{{ 'true' if purchase_active else 'false' }}" aria-controls="menuPurchase">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span>{% if current_locale=='ar' %}المشتريات{% else %}Purchase{% endif %}</span>
+                    <i class="fas fa-chevron-right nav-caret"></i>
+                </a>
+                <div class="collapse {% if purchase_active %}show{% endif %}" id="menuPurchase">
+                    <ul class="nav-sub">
+                        <li class="nav-item">
+                            <a href="{{ url_for('purchase.vendor_list') }}" class="nav-link {% if request.endpoint and 'vendor' in request.endpoint %}active{% endif %}">
+                                <i class="fas fa-store"></i>
+                                <span>{% if current_locale=='ar' %}تسجيل المورد{% else %}Vendor Reg{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('vendor_doc.list_vendor_documents_page') }}"
+                               class="nav-link {% if request.endpoint == 'vendor_doc.list_vendor_documents_page' %}active{% endif %}">
+                                <i class="fas fa-paperclip"></i>
+                                <span>{% if current_locale=='ar' %}وثائق المورد{% else %}Vendor Documents{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('purchase.pr_list') }}" class="nav-link {% if request.endpoint and 'pr_list' in request.endpoint %}active{% endif %}">
+                                <i class="fas fa-file-alt"></i>
+                                <span>{% if current_locale=='ar' %}طلب الشراء{% else %}Purchase Request{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('purchase.pq_list') }}" class="nav-link {% if request.endpoint and 'pq_list' in request.endpoint %}active{% endif %}">
+                                <i class="fas fa-file-invoice"></i>
+                                <span>{% if current_locale=='ar' %}عرض سعر الشراء{% else %}Purchase Quotation{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('purchase.po_list') }}" class="nav-link {% if request.endpoint and 'po_list' in request.endpoint %}active{% endif %}">
+                                <i class="fas fa-shopping-bag"></i>
+                                <span>{% if current_locale=='ar' %}أمر الشراء{% else %}Purchase Order{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('purchase.grn_list') }}" class="nav-link {% if request.endpoint and 'grn' in request.endpoint %}active{% endif %}">
+                                <i class="fas fa-truck"></i>
+                                <span>{% if current_locale=='ar' %}إيصال الاستلام{% else %}Goods Receipt Note{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('purchase.pinv_list') }}" class="nav-link {% if request.endpoint and 'pinv' in request.endpoint %}active{% endif %}">
+                                <i class="fas fa-receipt"></i>
+                                <span>{% if current_locale=='ar' %}فاتورة الشراء{% else %}Purchase Invoice{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('purchase.grr_list') }}" class="nav-link {% if request.endpoint and 'grr' in request.endpoint %}active{% endif %}">
+                                <i class="fas fa-undo"></i>
+                                <span>{% if current_locale=='ar' %}طلب إرجاع البضاعة{% else %}Goods Return Request{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('purchase.pdm_list') }}" class="nav-link {% if request.endpoint and 'pdm' in request.endpoint %}active{% endif %}">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                                <span>{% if current_locale=='ar' %}مذكرة الخصم{% else %}Purchase Debit Memo{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('tax_codes.purchase_tax_page') }}" class="nav-link {% if request.endpoint == 'tax_codes.purchase_tax_page' %}active{% endif %}">
+                                <i class="fas fa-percent"></i>
+                                <span>{% if current_locale=='ar' %}رموز ضريبة الشراء{% else %}Purchase Tax Codes{% endif %}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            {# ══ SALE ════════════════════════════════════════ #}
+            {% set sale_active = request.endpoint and ((request.endpoint == 'lookups.list_buyers') or (request.endpoint == 'buyer_doc.list_buyer_documents_page') or (request.endpoint.startswith('sales.')) or (request.endpoint == 'tax_codes.sales_tax_page')) %}
+            <li class="nav-item">
+                <a class="nav-link nav-parent {% if sale_active %}has-active{% endif %}" data-bs-toggle="collapse" href="#menuSale" role="button" aria-expanded="{{ 'true' if sale_active else 'false' }}" aria-controls="menuSale">
+                    <i class="fas fa-tags"></i>
+                    <span>{% if current_locale=='ar' %}المبيعات{% else %}Sale{% endif %}</span>
+                    <i class="fas fa-chevron-right nav-caret"></i>
+                </a>
+                <div class="collapse {% if sale_active %}show{% endif %}" id="menuSale">
+                    <ul class="nav-sub">
+                        <li class="nav-item">
+                            <a href="{{ url_for('lookups.list_buyers') }}" class="nav-link {% if request.endpoint == 'lookups.list_buyers' %}active{% endif %}">
+                                <i class="fas fa-user-tag"></i>
+                                <span>{% if current_locale=='ar' %}تسجيل المشتري{% else %}Buyer Reg{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('buyer_doc.list_buyer_documents_page') }}"
+                               class="nav-link {% if request.endpoint == 'buyer_doc.list_buyer_documents_page' %}active{% endif %}">
+                                <i class="fas fa-file-alt"></i>
+                                <span>{% if current_locale=='ar' %}وثائق المشتري{% else %}Buyer Documents{% endif %}</span>
+                            </a>
+                        </li>
+                        {% for endpoint, icon, en, ar in [
+                            ('sales.sr_list','file-signature','Sales Request','طلب بيع'),
+                            ('sales.sq_list','file-invoice','Sales Quotation','عرض سعر بيع'),
+                            ('sales.so_list','shopping-cart','Sales Order','أمر بيع'),
+                            ('sales.dn_list','boxes','Delivery Note','إشعار تسليم'),
+                            ('sales.sinv_list','receipt','Sales Invoice','فاتورة البيع'),
+                            ('sales.srr_list','undo','Sales Return Request','طلب إرجاع بيع'),
+                            ('sales.scm_list','credit-card','Sales Credit Memo','مذكرة إضافة'),
+                        ] %}
+                        <li class="nav-item">
+                            <a href="{{ url_for(endpoint) }}" class="nav-link {% if request.endpoint == endpoint %}active{% endif %}">
+                                <i class="fas fa-{{ icon }}"></i>
+                                <span>{% if current_locale=='ar' %}{{ ar }}{% else %}{{ en }}{% endif %}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                        <li class="nav-item">
+                            <a href="{{ url_for('tax_codes.sales_tax_page') }}" class="nav-link {% if request.endpoint == 'tax_codes.sales_tax_page' %}active{% endif %}">
+                                <i class="fas fa-percent"></i>
+                                <span>{% if current_locale=='ar' %}رموز ضريبة البيع{% else %}Sales Tax Codes{% endif %}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            {# ══ EMPLOYEE ════════════════════════════════════ #}
+            {% set employee_active = request.endpoint and (('employees.' in request.endpoint) or ('work_allocations.' in request.endpoint) or ('payroll.' in request.endpoint)) %}
+            <li class="nav-item">
+                <a class="nav-link nav-parent {% if employee_active %}has-active{% endif %}" data-bs-toggle="collapse" href="#menuEmployee" role="button" aria-expanded="{{ 'true' if employee_active else 'false' }}" aria-controls="menuEmployee">
+                    <i class="fas fa-user-tie"></i>
+                    <span>{% if current_locale=='ar' %}الموظفون{% else %}Employee{% endif %}</span>
+                    <i class="fas fa-chevron-right nav-caret"></i>
+                </a>
+                <div class="collapse {% if employee_active %}show{% endif %}" id="menuEmployee">
+                    <ul class="nav-sub">
+                        <li class="nav-item">
+                            <a href="{{ url_for('employees.list_employees') }}" class="nav-link {% if request.endpoint and 'employees.' in request.endpoint and 'payroll' not in request.endpoint %}active{% endif %}">
+                                <i class="fas fa-user-tie"></i>
+                                <span>{% if current_locale=='ar' %}الموظفون{% else %}Employees{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('work_allocations.list_wa') }}" class="nav-link {% if request.endpoint and 'work_allocations.' in request.endpoint %}active{% endif %}">
+                                <i class="fas fa-tasks"></i>
+                                <span>{% if current_locale=='ar' %}توزيع العمل{% else %}Work Allocation{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('payroll.payroll_list') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('payroll.') %}active{% endif %}">
+                                <i class="fas fa-money-check-alt"></i>
+                                <span>{% if current_locale=='ar' %}توحيد الرواتب{% else %}Salary Consolidation{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item nav-item-coming">
+                            <span class="nav-link nav-link-disabled">
+                                <i class="fas fa-hand-holding-usd"></i>
+                                <span>{% if current_locale=='ar' %}السلف{% else %}Advances{% endif %}</span>
+                                <span class="nav-soon">{% if current_locale=='ar' %}قريباً{% else %}Soon{% endif %}</span>
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            {# ══ CHART OF ACCOUNTS ═══════════════════════════════ #}
+            {% set coa_active = request.endpoint and request.endpoint.startswith('coa.') %}
+            <li class="nav-item">
+                <a class="nav-link nav-parent {% if coa_active %}has-active{% endif %}" data-bs-toggle="collapse" href="#menuCOA" role="button" aria-expanded="{{ 'true' if coa_active else 'false' }}" aria-controls="menuCOA">
+                    <i class="fas fa-book"></i>
+                    <span>{% if current_locale=='ar' %}دليل الحسابات{% else %}Chart of Accounts{% endif %}</span>
+                    <i class="fas fa-chevron-right nav-caret"></i>
+                </a>
+                <div class="collapse {% if coa_active %}show{% endif %}" id="menuCOA">
+                    <ul class="nav-sub">
+                        <li class="nav-item">
+                            <a href="{{ url_for('coa.level_one_list') }}" class="nav-link {% if request.endpoint == 'coa.level_one_list' %}active{% endif %}">
+                                <i class="fas fa-sitemap"></i>
+                                <span>{% if current_locale=='ar' %}المستوى الأول{% else %}Level 1{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('coa.level_two_list') }}" class="nav-link {% if request.endpoint == 'coa.level_two_list' %}active{% endif %}">
+                                <i class="fas fa-layer-group"></i>
+                                <span>{% if current_locale=='ar' %}المستوى الثاني{% else %}Level 2{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('coa.level_three_list') }}" class="nav-link {% if request.endpoint == 'coa.level_three_list' %}active{% endif %}">
+                                <i class="fas fa-stream"></i>
+                                <span>{% if current_locale=='ar' %}المستوى الثالث{% else %}Level 3{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('coa.level_four_list') }}" class="nav-link {% if request.endpoint == 'coa.level_four_list' %}active{% endif %}">
+                                <i class="fas fa-list-ul"></i>
+                                <span>{% if current_locale=='ar' %}المستوى الرابع{% else %}Level 4{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('coa.level_five_list') }}" class="nav-link {% if request.endpoint == 'coa.level_five_list' %}active{% endif %}">
+                                <i class="fas fa-receipt"></i>
+                                <span>{% if current_locale=='ar' %}المستوى الخامس{% else %}Level 5{% endif %}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('coa.coa_views') }}" class="nav-link {% if request.endpoint == 'coa.coa_views' %}active{% endif %}">
+                                <i class="fas fa-sitemap"></i>
+                                <span>{% if current_locale=='ar' %}العروض (مسطّح/شجري){% else %}Views (Flat/Tree){% endif %}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            {# ══ FINANCIAL YEAR ══════════════════════════════ #}
+            <li class="nav-item">
+                <a href="{{ url_for('financial.fy_page') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('financial.') %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>{% if current_locale=='ar' %}السنة المالية{% else %}Financial Year{% endif %}</span>
+                </a>
+            </li>
+
+            {# ══ JOURNAL ENTRIES ══════════════════════════════ #}
+            <li class="nav-item">
+                <a href="{{ url_for('journal.journal_list') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('journal.') %}active{% endif %}">
+                    <i class="fas fa-book"></i>
+                    <span>{% if current_locale=='ar' %}قيود اليومية{% else %}Journal Entries{% endif %}</span>
+                </a>
+            </li>
+
+        </ul>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="nav-link text-danger">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>{% if current_locale=='ar' %}تسجيل خروج{% else %}Logout{% endif %}</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content flex-grow-1">
+        <!-- Top Navbar -->
+        <nav class="top-navbar navbar">
+            <div class="container-fluid">
+                <button class="btn btn-link sidebar-toggle-mobile" id="sidebarToggleMobile">
+                    <i class="fas fa-bars"></i>
+                </button>
+
+                <nav aria-label="breadcrumb" class="ms-3 d-none d-md-block">
+                    <ol class="breadcrumb mb-0">
+                        {% block breadcrumb %}
+                        <li class="breadcrumb-item active">{% if current_locale=='ar' %}الرئيسية{% else %}Home{% endif %}</li>
+                        {% endblock %}
+                    </ol>
+                </nav>
+
+                <div class="navbar-right ms-auto d-flex align-items-center gap-3">
+                    <!-- Language Switcher -->
+                    <div class="dropdown lang-switcher">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-globe me-1"></i>
+                            {% if current_locale=='ar' %}العربية{% else %}English{% endif %}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item {% if current_locale=='en' %}active{% endif %}"
+                                   href="{{ url_for('auth.set_language', lang='en') }}">🇺🇸 English</a></li>
+                            <li><a class="dropdown-item {% if current_locale=='ar' %}active{% endif %}"
+                                   href="{{ url_for('auth.set_language', lang='ar') }}">🇸🇦 العربية</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="dropdown">
+                        <button class="btn btn-link dropdown-toggle user-dropdown" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li class="dropdown-header">{{ current_user.username }}</li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i>{% if current_locale=='ar' %}تسجيل خروج{% else %}Logout{% endif %}
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="alert-container">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    <i class="fas {% if category=='success' %}fa-check-circle{% elif category=='danger' %}fa-exclamation-circle{% elif category=='warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Must load after Bootstrap so its modal hooks register before page scripts. -->
+<script src="{{ url_for('static', filename='js/window-modal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/grid-kit.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

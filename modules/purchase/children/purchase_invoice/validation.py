@@ -1,0 +1,10 @@
+"""Validation helpers for purchase.purchase_invoice.
+
+Return a list of error strings; empty list == valid. Generated stub.
+"""
+
+
+def validate_purchase_invoice(data: dict) -> list[str]:
+    errors: list[str] = []
+    # TODO: add field checks for purchase.purchase_invoice
+    return errors
